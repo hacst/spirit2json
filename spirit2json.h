@@ -2,6 +2,7 @@
 #define SPIRIT2JSON_H
 
 #include <string>
+#include <stdexcept>
 #include <ostream>
 #include <vector>
 #include <unordered_map>
@@ -22,14 +23,25 @@ typedef boost::make_recursive_variant<
 typedef std::vector<JSONValue> JSONArray;
 typedef std::unordered_map<std::string, JSONValue> JSONObject;
 
-std::ostream& operator<<(std::ostream& output, JSONValue& val);
-std::ostream& operator<<(std::ostream& output, JSONArray& arr);
-std::ostream& operator<<(std::ostream& output, JSONObject& obj);
+class Exception : public std::exception {};
+class ParsingFailed : public Exception {};
+
+JSONValue parse(std::string str);
+
+void get_stats(unsigned int &accumulated, 
+			unsigned int &strings,
+			unsigned int &objects,
+			unsigned int &arrays,
+			unsigned int &bools,
+			unsigned int &nulls,
+			unsigned int &doubles,
+			JSONValue &val);
+
 
 }
 
-
-
-
+std::ostream& operator<<(std::ostream& output, spirit2json::JSONValue& val);
+std::ostream& operator<<(std::ostream& output, spirit2json::JSONArray& arr);
+std::ostream& operator<<(std::ostream& output, spirit2json::JSONObject& obj);
 
 #endif
