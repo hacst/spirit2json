@@ -37,9 +37,15 @@ BOOST_AUTO_TEST_CASE(string_basic_usage) {
 }
 
 BOOST_AUTO_TEST_CASE(string_escape_characters) {
-	BOOST_CHECK_EQUAL(get<string>(JSONValue(parse("\"testing\\\"\""))), "testing\"");
+	// Normal escapes
+	BOOST_CHECK_EQUAL(get<string>(JSONValue(parse("\"\\t \\r \\n \\f \\b \\/ \\\\ \\\"\""))),
+			"\t \r \n \f \b / \\ \"");
+	BOOST_CHECK_EQUAL(get<string>(JSONValue(parse("\"testing\\tescapes\\\"in\\rtext \""))),
+			"testing\tescapes\"in\rtext ");
+
+	// Hex escapes
+	//BOOST_CHECK_EQUAL(get<string>(JSONValue(parse(""))))
 	//TODO: Implement others
-	BOOST_FAIL("Not implemented");
 }
 
 BOOST_AUTO_TEST_CASE(string_unicode) {

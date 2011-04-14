@@ -152,12 +152,21 @@ struct json_grammar : qi::grammar<Iterator, JSONValue(), qi::space_type> {
 		using ascii::string;
 		using namespace qi::labels;
 
-		str %= '"' >> lexeme[*(char_ - '"')] >> '"';
+		str = '"' >> *(escaped_char | "\\u" >> qi::hex | (qi::print - '"')) >> '"';
 		val %= str | bool_ | double_ | null | arr | obj;
 		arr %= '[' >> -(val % ',') >> ']';
 		obj %= '{' >> -(pair % ',') >> '}';
 		null = lit("null")	[_val = nullptr];
 		pair %= str >> ':' >> val;
+
+		escaped_char.add("\\\"", '"')
+				("\\\\", '\\')
+				("\\/", '/')
+				("\\b", '\b')
+				("\\f", '\f')
+				("\\n", '\n')
+				("\\r", '\r')
+				("\\t", '\t');
 
 		val.name("Value");
 		arr.name("Array");
@@ -181,8 +190,12 @@ struct json_grammar : qi::grammar<Iterator, JSONValue(), qi::space_type> {
 	qi::rule<Iterator, JSONValue(), qi::space_type> val;
 	qi::rule<Iterator, JSONArray(), qi::space_type> arr;
 	qi::rule<Iterator, JSONObject(), qi::space_type> obj;
+
 	qi::rule<Iterator, std::string()> str;
+	qi::symbols<char const, char const> escaped_char;
+
 	qi::rule<Iterator, std::nullptr_t(), qi::space_type> null;
+
 	qi::rule<Iterator, std::pair<std::string, JSONValue>(), qi::space_type> pair;
 };
 

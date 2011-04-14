@@ -23,8 +23,17 @@ typedef boost::make_recursive_variant<
 typedef std::vector<JSONValue> JSONArray;
 typedef std::unordered_map<std::string, JSONValue> JSONObject;
 
-class Exception : public std::exception {};
-class ParsingFailed : public Exception {};
+class Exception : public std::exception {
+	virtual const char* what() const throw() {
+		return "spirit2json: Exception";
+	}
+};
+
+class ParsingFailed : public Exception {
+	virtual const char* what() const throw() {
+		return "spirit2json: Failed to parse given json";
+	}
+};
 
 JSONValue parse(std::string str);
 
