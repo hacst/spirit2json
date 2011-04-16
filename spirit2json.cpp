@@ -5,7 +5,6 @@
 
 #include "spirit2json.h"
 
-
 namespace spirit2json {
 
 class counter : public boost::static_visitor<> {

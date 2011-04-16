@@ -3,7 +3,6 @@
 #include <spirit2json.h>
 #include <boost/test/included/unit_test.hpp>
 #include <string>
-#include <iostream>
 
 using namespace std;
 using namespace spirit2json;
@@ -16,8 +15,8 @@ BOOST_AUTO_TEST_CASE(number_basic_usage) {
 	BOOST_CHECK_EQUAL(get<double>(JSONValue(parse("-5"))), -5.);
 	BOOST_CHECK_EQUAL(get<double>(JSONValue(parse("42"))), 42.);
 	BOOST_CHECK_EQUAL(get<double>(JSONValue(parse("42"))), 42);
-	BOOST_CHECK_EQUAL(get<double>(JSONValue(parse("1234567890"))), 1234567890.);
-	BOOST_CHECK_EQUAL(get<double>(JSONValue(parse("-1234567890"))), -1234567890.);
+	BOOST_CHECK_EQUAL(get<double>(JSONValue(parse("1234567890.09876"))), 1234567890.09876);
+	BOOST_CHECK_EQUAL(get<double>(JSONValue(parse("-1234567890.12345"))), -1234567890.12345);
 }
 
 BOOST_AUTO_TEST_CASE(number_notations) {
@@ -34,7 +33,7 @@ BOOST_AUTO_TEST_CASE(number_precision) {
 	Tests for String
 */
 BOOST_AUTO_TEST_CASE(string_basic_usage) {
-	BOOST_CHECK_EQUAL(get<string>(JSONValue(parse("\"testing\""))), "testing");
+	BOOST_CHECK_EQUAL(get<string>(JSONValue(parse(" \" testing \" "))), " testing ");
 }
 
 BOOST_AUTO_TEST_CASE(string_escape_characters) {
@@ -58,7 +57,7 @@ BOOST_AUTO_TEST_CASE(string_unicode) {
 	Tests for Bool
 */
 
-BOOST_AUTO_TEST_CASE(boolean) {
+BOOST_AUTO_TEST_CASE(boolean_basic_usage) {
 	BOOST_CHECK_EQUAL(get<bool>(JSONValue(parse("true"))), true);
 	BOOST_CHECK_EQUAL(get<bool>(JSONValue(parse("false"))), false);
 
@@ -72,7 +71,7 @@ BOOST_AUTO_TEST_CASE(boolean) {
 /*
 	Tests for null
 */
-BOOST_AUTO_TEST_CASE(null) {
+BOOST_AUTO_TEST_CASE(null_basic_usage) {
 	//TODO: Figure out how to do this in a nice way
 	JSONValue val(parse("null"));
 	
@@ -117,15 +116,24 @@ BOOST_AUTO_TEST_CASE(object_basic_usage) {
 	JSONObject obj;
 	BOOST_CHECK(JSONValue(obj) == parse("{}"));
 
+	{
+		JSONObject o;
+		o.insert(JSONObject::value_type("NULL", nullptr));
+		BOOST_CHECK(JSONValue(o) == parse("{\"NULL\":null}"));
+	}
+
+	{
+		JSONObject o;
+		o.insert(JSONObject::value_type("other", JSONArray()));
+		BOOST_CHECK(JSONValue(o) == parse("{\"other\":[]}"));
+	}
+
 	obj.insert(JSONObject::value_type("test", 0.5));
 	BOOST_CHECK(JSONValue(obj) == parse("{\"test\":0.5}"));
 
 	obj.insert(JSONObject::value_type("other", JSONArray()));
-	//cout << obj;
-	JSONValue v(parse("{\"test\":0.5,\"other\":[]}"));
-	//cout << v;
 	BOOST_CHECK(JSONValue(obj) == parse("{\"test\":0.5,\"other\":[]}"));
 
 	obj.insert(JSONObject::value_type("NULL", nullptr));
-	BOOST_CHECK(JSONValue(obj) == parse(" { \"test\" :0.5,\n\t\t\"other\"  t\n:[],  \"NULL\":null}"));
+	BOOST_CHECK(JSONValue(obj) == parse(" { \"test\" :0.5,\n\t\t\"other\"  \t\n:[],  \"NULL\":null}"));
 }
