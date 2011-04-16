@@ -1,3 +1,4 @@
+#include "StdAfx.h"
 #define BOOST_TEST_MODULE spirit2json test
 #include <spirit2json.h>
 #include <boost/test/included/unit_test.hpp>

@@ -1,6 +1,7 @@
 #ifndef SPIRIT2JSON_H
 #define SPIRIT2JSON_H
 
+#include "StdAfx.h"
 #include <string>
 #include <stdexcept>
 #include <ostream>
