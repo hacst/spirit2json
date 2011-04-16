@@ -5,7 +5,7 @@
 #include <stdexcept>
 #include <ostream>
 #include <vector>
-#include <unordered_map>
+#include <map>
 #include <boost/variant.hpp>
 
 struct boost::recursive_variant_ {};
@@ -18,10 +18,10 @@ typedef boost::make_recursive_variant<
 	bool,
 	std::nullptr_t,
 	std::vector<boost::recursive_variant_ >,
-	std::unordered_map<std::string, boost::recursive_variant_ > >::type JSONValue;
+	std::map<std::string, boost::recursive_variant_ > >::type JSONValue;
 
 typedef std::vector<JSONValue> JSONArray;
-typedef std::unordered_map<std::string, JSONValue> JSONObject;
+typedef std::map<std::string, JSONValue> JSONObject;
 
 class Exception : public std::exception {
 	virtual const char* what() const throw() {
