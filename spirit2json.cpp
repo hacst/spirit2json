@@ -147,20 +147,21 @@ struct json_grammar : qi::grammar<Iterator, JSONValue(), qi::space_type> {
 		using qi::lit;
 		using qi::lexeme;
 		using qi::_val;
+		using qi::uint_parser;
 		using standard_wide::char_;
 		using namespace qi::labels;
 
-		str = '"' >> *(("\\u" > qi::hex) |
+		str = '"' > *(("\\u" > uint_parser<unsigned, 16, 4, 4>() ) |
 					   ('\\' > escaped_char) |
 					   (char_ - char_(L'\x0000', L'\x001F') - '"')
 					  )
-			>> '"';
+			> '"';
 
 		val %= str | bool_ | double_ | null | arr | obj;
-		arr %= '[' >> -(val % ',') >> ']';
-		obj %= '{' >> -(pair % ',') >> '}';
+		arr %= '[' > -(val % ',') > ']';
+		obj %= '{' > -(pair % ',') > '}';
 		null = lit("null")	[_val = nullptr];
-		pair %= str >> ':' >> val;
+		pair %= str > ':' > val;
 
 		escaped_char.add("\"", '"')
 				("\\", '\\')
@@ -170,6 +171,7 @@ struct json_grammar : qi::grammar<Iterator, JSONValue(), qi::space_type> {
 				("n", '\n')
 				("r", '\r')
 				("t", '\t');
+		escaped_char.name("Escape character");
 
 		val.name("Value");
 		arr.name("Array");
@@ -183,7 +185,7 @@ struct json_grammar : qi::grammar<Iterator, JSONValue(), qi::space_type> {
 			std::cout
 				<< phoenix::val("Error! Expecting ")
 				<< _4
-				<< phoenix::val(" here: \"")
+				<< phoenix::val(" instead found: \"")
 				<< phoenix::construct<std::string>(_3, _2)
 				<< phoenix::val("\"")
 				<< std::endl

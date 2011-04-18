@@ -20,6 +20,8 @@ Done ;-) There's a lot of work left to do but some of the major areas are:
 * Test coverage for generator/pretty printer
 * Proper error reporting
 * Creation of a usable API
+* Numeric parser adhering to JSON standards
+* Proper error reporting
 
 Can I contribute?
 -----------------

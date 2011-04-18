@@ -17,6 +17,8 @@ BOOST_AUTO_TEST_CASE(number_basic_usage) {
 	BOOST_CHECK_EQUAL(get<double>(JSONValue(parse(L"42"))), 42);
 	BOOST_CHECK_EQUAL(get<double>(JSONValue(parse(L"1234567890.09876"))), 1234567890.09876);
 	BOOST_CHECK_EQUAL(get<double>(JSONValue(parse(L"-1234567890.12345"))), -1234567890.12345);
+
+	BOOST_CHECK_THROW(parse(L"123.123.123"), ParsingFailed);
 }
 
 BOOST_AUTO_TEST_CASE(number_notations) {
@@ -53,9 +55,14 @@ BOOST_AUTO_TEST_CASE(string_escape_characters) {
 
 	// Make sure we do not ignore unknown escapes
 	BOOST_CHECK_THROW(parse(L"\"\\x\""), ParsingFailed);
+	BOOST_CHECK_THROW(parse(L"\"\\U\""), ParsingFailed);
 
 	// Hex escapes
 	BOOST_CHECK(get<wstring>(JSONValue(parse(sanskrit_escaped))) == sanskrit);
+	// Make sure we only accept 4 character hex numbers
+	BOOST_CHECK(get<wstring>(JSONValue(parse(L"\"\\uABABA\""))) == L"\xABAB"L"A");
+	BOOST_CHECK_THROW(parse(L"\"\\uAB\""), ParsingFailed);
+	BOOST_CHECK_THROW(parse(L"\"\\u\""), ParsingFailed);
 }
 
 BOOST_AUTO_TEST_CASE(string_unicode) {
@@ -150,4 +157,16 @@ BOOST_AUTO_TEST_CASE(object_basic_usage) {
 
 	obj.insert(JSONObject::value_type(L"NULL", nullptr));
 	BOOST_CHECK(JSONValue(obj) == parse(L" { \"test\" :0.5,\n\t\t\"other\"  \t\n:[],  \"NULL\":null}"));
+
+	BOOST_CHECK_THROW(parse(L"{:}"), ParsingFailed);
+}
+
+/*
+	Tests for miscellaneous stuff
+*/
+BOOST_AUTO_TEST_CASE(misc) {
+	BOOST_CHECK_THROW(parse(L""), ParsingFailed);
+	BOOST_CHECK_THROW(parse(L"["), ParsingFailed);
+	BOOST_CHECK_THROW(parse(L"]"), ParsingFailed);
+	BOOST_CHECK_THROW(parse(L","), ParsingFailed);
 }
