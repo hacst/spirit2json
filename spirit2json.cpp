@@ -1,146 +1,53 @@
-#include <iostream>
-#include <boost/spirit/include/qi.hpp>
-#include <boost/spirit/include/phoenix.hpp>
-#include <boost/fusion/include/std_pair.hpp>
+/**
+ * \file spirit2json.cpp
+ * \author Stefan Hacker
+ * \copyright \verbatim
+ *
+ * Copyright (c) 2011, Stefan Hacker <dd0t@users.sourceforge.net>
+ *
+ * All rights reserved.
+ * 
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions are met:
+ *     * Redistributions of source code must retain the above copyright
+ *       notice, this list of conditions and the following disclaimer.
+ *     * Redistributions in binary form must reproduce the above copyright
+ *       notice, this list of conditions and the following disclaimer in the
+ *       documentation and/or other materials provided with the distribution.
+ *     * Neither the name of the authors nor the
+ *       names of its contributors may be used to endorse or promote products
+ *       derived from this software without specific prior written permission.
+ * 
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
+ * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
+ * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
+ * DISCLAIMED. IN NO EVENT SHALL THE AUTHORS BE LIABLE FOR ANY
+ * DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+ * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+ * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ * \endverbatim
+ */
+
+#include "stdafx.h"
 
 #include "spirit2json.h"
 
 namespace spirit2json {
 
-class counter : public boost::static_visitor<> {
-	unsigned int &accumulated;
-	unsigned int &strings;
-	unsigned int &objects;
-	unsigned int &arrays;
-	unsigned int &bools;
-	unsigned int &nulls;
-	unsigned int &doubles;
-public:
-	counter(unsigned int &accumulated, 
-			unsigned int &strings,
-			unsigned int &objects,
-			unsigned int &arrays,
-			unsigned int &bools,
-			unsigned int &nulls,
-			unsigned int &doubles) : accumulated(accumulated),
-	strings(strings), objects(objects), arrays(arrays), bools(bools),
-	nulls(nulls), doubles(doubles) {}
+//////////////
+// PARSING //
+////////////
 
-	void operator()(JSONNull&) const {
-		++accumulated;
-		++nulls;
-	}
-
-	void operator()(JSONArray &arr) const {
-		++accumulated;
-		++arrays;
-
-		for (JSONArray::iterator it = arr.begin(); it != arr.end(); ++it) {
-			boost::apply_visitor( *this, *it);
-		}
-	}
-
-	void operator()(JSONObject &obj) const {
-		++accumulated;
-		++objects;
-		for (JSONObject::iterator it = obj.begin(); it != obj.end(); ++it) {
-			++strings;
-			++accumulated;
-			boost::apply_visitor( *this, it->second);
-		}
-	}
-
-	void operator() (bool &b) const {
-		++bools;
-		++accumulated;
-	}
-
-	void operator() (std::wstring &str) const {
-		++strings;
-		++accumulated;
-	}
-
-	void operator() (double &d) const {
-		++accumulated;
-		++doubles;
-	}
-
-};
-
-void get_stats(unsigned int &accumulated, 
-			unsigned int &strings,
-			unsigned int &objects,
-			unsigned int &arrays,
-			unsigned int &bools,
-			unsigned int &nulls,
-			unsigned int &doubles,
-			JSONValue &val) {
-				boost::apply_visitor( counter(accumulated, strings, objects, arrays, bools, nulls, doubles), val);
-}
+using namespace boost;
+using namespace boost::spirit;
 
 /**
- * Printer class used in implementation of << operator overloads
+ * \brief Spirit2 qi grammar for parsing json strings to JSONValue AST representations.
  */
-class printer : public boost::static_visitor<> {
-	const unsigned int level;
-	std::wostream& out;
-
-public:
-	printer(std::wostream& out, unsigned int level = 0) : level(level), out(out) {}
-
-	std::wstring indent(unsigned int l) const {
-		return std::wstring(l * 4, ' ');
-	}
-
-	void operator()(JSONNull&) const {
-		out << "null";
-	}
-
-	void operator()(JSONArray &arr) const {
-		out << "[" << std::endl;
-		for (JSONArray::iterator it = arr.begin(); it != arr.end(); ++it) {
-			if (it != arr.begin())
-				out << "," << std::endl;
-
-			out << indent(level + 1);
-			boost::apply_visitor ( printer(out, level + 1), *it);
-		}
-		out << std::endl << indent(level) << "]";
-
-	}
-
-	void operator()(JSONObject &obj) const {
-		out << "{" << std::endl;
-		for (JSONObject::iterator it = obj.begin(); it != obj.end(); ++it) {
-			if (it != obj.begin())
-				out << ',' << std::endl;
-
-			out << indent(level + 1) << "\"" << it->first << "\" : ";
-			boost::apply_visitor( printer(out, level + 1), it->second);
-		}
-		out << std::endl << indent(level) << "}";
-
-	}
-
-	void operator() (bool &b) const {
-		out << (b ? "true" : "false");
-	}
-
-	void operator() (std::wstring &str) const {
-		out << "\"" << str << "\"";
-	}
-
-	template <typename T>
-	void operator() (T &t) const {
-		out << t;
-	}
-
-};
-
-
-using namespace boost::spirit;
-using namespace boost;
-
 template <typename Iterator>
 struct json_grammar : qi::grammar<Iterator, JSONValue(), qi::space_type> {
 	json_grammar() : json_grammar::base_type(val) {
@@ -160,7 +67,7 @@ struct json_grammar : qi::grammar<Iterator, JSONValue(), qi::space_type> {
 		val %= str | bool_ | double_ | null | arr | obj;
 		arr %= '[' > -(val % ',') > ']';
 		obj %= '{' > -(pair % ',') > '}';
-		null = lit("null")	[_val = nullptr];
+		null = lit("null")	[_val = JSONNull()];
 		pair %= str > ':' > val;
 
 		escaped_char.add("\"", '"')
@@ -179,37 +86,38 @@ struct json_grammar : qi::grammar<Iterator, JSONValue(), qi::space_type> {
 		str.name("String");
 		null.name("null");
 		pair.name("Pair");
-
+		
 		qi::on_error<qi::fail>(
 			val,
-			std::cerr
-			    << phoenix::val("Error! Expecting: ")
-			    << _4
-			    << phoenix::val(" instead found: \"")
+			std::cout
+				<< phoenix::val("Error! Expecting ")
+				<< _4
+				<< phoenix::val(" instead found: \"")
 				<< phoenix::construct<std::string>(_3, _2)
 				<< phoenix::val("\"")
 				<< std::endl
 		);
 	}
 	
-	qi::rule<Iterator, JSONValue(), qi::space_type> val;
-	qi::rule<Iterator, JSONArray(), qi::space_type> arr;
-	qi::rule<Iterator, JSONObject(), qi::space_type> obj;
+	qi::rule<Iterator, JSONValue(), qi::space_type> val;  //!< Rule parsing JSONValue types
+	qi::rule<Iterator, JSONArray(), qi::space_type> arr;  //!< Rule parsing JSONArray types
+	qi::rule<Iterator, JSONObject(), qi::space_type> obj; //!< Rule parsing JSONObject types
 
-	qi::rule<Iterator, std::wstring()> str;
-	qi::symbols<char const, char const> escaped_char;
+	qi::rule<Iterator, std::wstring()> str;				  //!< Rule parsing JSONString types
+	qi::symbols<char const, char const> escaped_char;	  //!< List of escape characters and their code
 
-	qi::rule<Iterator, JSONNull(), qi::space_type> null;
+	qi::rule<Iterator, JSONNull(), qi::space_type> null;  //!< Rule parsing JSONNull types
 
-	qi::rule<Iterator, std::pair<std::wstring, JSONValue>(), qi::space_type> pair;
+	qi::rule<Iterator, std::pair<JSONString, JSONValue>(), qi::space_type> pair; //!< Rule parsing pairs in JSONObject types
 };
 
-JSONValue parse(std::wstring str) {
+JSONValue parse(JSONString str) {
 	JSONValue result;
-	std::wstring::const_iterator iter = str.begin();
-	std::wstring::const_iterator end = str.end();
 
-	bool r = qi::phrase_parse(iter, end, json_grammar<std::wstring::const_iterator>(), qi::space, result);
+	JSONString::const_iterator iter = str.begin();
+	JSONString::const_iterator end = str.end();
+
+	bool r = qi::phrase_parse(iter, end, json_grammar<JSONString::const_iterator>(), qi::space, result);
 	//TODO: Implement this right
 	if (!r || iter != str.end()) {
 		throw ParsingFailed();
@@ -218,21 +126,79 @@ JSONValue parse(std::wstring str) {
 	return result;
 }
 
+
+/////////////////
+// Generation //
+///////////////
+
+/**
+ * \brief Static visitor for pretty printing a JSONValue variant to an std::wostream.
+ */
+class prettyPrinter : public boost::static_visitor<> {
+	const unsigned int level;
+	std::wostream& out;
+
+public:
+	prettyPrinter(std::wostream& out, unsigned int level = 0) : level(level), out(out) {}
+
+	JSONString indent(unsigned int l) const {
+		return JSONString(l * 4, ' ');
+	}
+
+	void operator()(JSONNull&) const {
+		out << L"null";
+	}
+
+	void operator()(JSONArray &arr) const {
+		out << L"[" << std::endl;
+		for (auto it = arr.begin(); it != arr.end(); ++it) {
+			if (it != arr.begin())
+				out << L"," << std::endl;
+
+			out << indent(level + 1);
+			boost::apply_visitor ( prettyPrinter(out, level + 1), *it);
+		}
+		out << std::endl << indent(level) << L"]";
+
+	}
+
+	void operator()(JSONObject &obj) const {
+		out << L"{" << std::endl;
+		for (auto it = obj.begin(); it != obj.end(); ++it) {
+			if (it != obj.begin())
+				out << L',' << std::endl;
+
+			out << indent(level + 1) << L"\"" << it->first << L"\" : ";
+			boost::apply_visitor( prettyPrinter(out, level + 1), it->second);
+		}
+		out << std::endl << indent(level) << L"}";
+
+	}
+
+	void operator() (JSONBool &b) const {
+		out << (b ? L"true" : L"false");
+	}
+
+	void operator() (JSONString &str) const {
+		out << L"\"" << str << L"\"";
+	}
+
+	template <typename T>
+	void operator() (T &t) const {
+		out << t;
+	}
+
+};
+
+JSONString generate(JSONValue& val) {
+	std::wstringstream ss;
+	boost::apply_visitor(prettyPrinter(ss), val);
+	return ss.str();
 }
+
+} // namespace spirit2json
 
 std::wostream& operator<<(std::wostream& output, spirit2json::JSONValue& val) {
-	boost::apply_visitor(spirit2json::printer(output), val);
-	return output;
-}
-
-std::wostream& operator<<(std::wostream& output, spirit2json::JSONArray& arr) {
-	spirit2json::JSONValue val = spirit2json::JSONValue(arr);
-	boost::apply_visitor(spirit2json::printer(output), val);
-	return output;
-}
-
-std::wostream& operator<<(std::wostream& output, spirit2json::JSONObject& map) {
-	spirit2json::JSONValue val = spirit2json::JSONValue(map);
-	boost::apply_visitor(spirit2json::printer(output), val);
+	boost::apply_visitor(spirit2json::prettyPrinter(output), val);
 	return output;
 }
