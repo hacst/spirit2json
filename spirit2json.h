@@ -7,17 +7,36 @@
 #include <ostream>
 #include <vector>
 #include <map>
+#include <cstddef>
 #include <boost/variant.hpp>
+#include <boost/config.hpp>
 
 struct boost::recursive_variant_ {};
 
 namespace spirit2json {
 
+#if defined(BOOST_NO_NULLPTR)
+struct JSONNull {
+	bool operator==(const JSONNull&) const {
+		return true;
+	}
+
+	operator bool() const {
+		return false;
+	}
+};
+
+static JSONNull nullptr = JSONNull();
+
+#else
+typedef std::nullptr_t JSONNull;
+#endif
+
 typedef boost::make_recursive_variant<
 	std::wstring,
 	double,
 	bool,
-	std::nullptr_t,
+	JSONNull,
 	std::vector<boost::recursive_variant_ >,
 	std::map<std::wstring, boost::recursive_variant_ > >::type JSONValue;
 

@@ -1,4 +1,4 @@
-#include <ostream>
+#include <iostream>
 #include <boost/spirit/include/qi.hpp>
 #include <boost/spirit/include/phoenix.hpp>
 #include <boost/fusion/include/std_pair.hpp>
@@ -26,7 +26,7 @@ public:
 	strings(strings), objects(objects), arrays(arrays), bools(bools),
 	nulls(nulls), doubles(doubles) {}
 
-	void operator()(std::nullptr_t& nptr) const {
+	void operator()(JSONNull&) const {
 		++accumulated;
 		++nulls;
 	}
@@ -35,7 +35,7 @@ public:
 		++accumulated;
 		++arrays;
 
-		for (auto it = arr.begin(); it != arr.end(); ++it) {
+		for (JSONArray::iterator it = arr.begin(); it != arr.end(); ++it) {
 			boost::apply_visitor( *this, *it);
 		}
 	}
@@ -43,7 +43,7 @@ public:
 	void operator()(JSONObject &obj) const {
 		++accumulated;
 		++objects;
-		for (auto it = obj.begin(); it != obj.end(); ++it) {
+		for (JSONObject::iterator it = obj.begin(); it != obj.end(); ++it) {
 			++strings;
 			++accumulated;
 			boost::apply_visitor( *this, it->second);
@@ -92,13 +92,13 @@ public:
 		return std::wstring(l * 4, ' ');
 	}
 
-	void operator()(std::nullptr_t& nptr) const {
+	void operator()(JSONNull&) const {
 		out << "null";
 	}
 
 	void operator()(JSONArray &arr) const {
 		out << "[" << std::endl;
-		for (auto it = arr.begin(); it != arr.end(); ++it) {
+		for (JSONArray::iterator it = arr.begin(); it != arr.end(); ++it) {
 			if (it != arr.begin())
 				out << "," << std::endl;
 
@@ -111,7 +111,7 @@ public:
 
 	void operator()(JSONObject &obj) const {
 		out << "{" << std::endl;
-		for (auto it = obj.begin(); it != obj.end(); ++it) {
+		for (JSONObject::iterator it = obj.begin(); it != obj.end(); ++it) {
 			if (it != obj.begin())
 				out << ',' << std::endl;
 
@@ -179,13 +179,13 @@ struct json_grammar : qi::grammar<Iterator, JSONValue(), qi::space_type> {
 		str.name("String");
 		null.name("null");
 		pair.name("Pair");
-		
+
 		qi::on_error<qi::fail>(
 			val,
-			std::cout
-				<< phoenix::val("Error! Expecting ")
-				<< _4
-				<< phoenix::val(" instead found: \"")
+			std::cerr
+			    << phoenix::val("Error! Expecting: ")
+			    << _4
+			    << phoenix::val(" instead found: \"")
 				<< phoenix::construct<std::string>(_3, _2)
 				<< phoenix::val("\"")
 				<< std::endl
@@ -199,7 +199,7 @@ struct json_grammar : qi::grammar<Iterator, JSONValue(), qi::space_type> {
 	qi::rule<Iterator, std::wstring()> str;
 	qi::symbols<char const, char const> escaped_char;
 
-	qi::rule<Iterator, std::nullptr_t(), qi::space_type> null;
+	qi::rule<Iterator, JSONNull(), qi::space_type> null;
 
 	qi::rule<Iterator, std::pair<std::wstring, JSONValue>(), qi::space_type> pair;
 };

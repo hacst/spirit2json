@@ -6,7 +6,7 @@
 
 using namespace std;
 using namespace spirit2json;
-
+using boost::get;
 /*
 	Tests for Number
 */
@@ -93,9 +93,11 @@ BOOST_AUTO_TEST_CASE(boolean_basic_usage) {
 	Tests for null
 */
 BOOST_AUTO_TEST_CASE(null_basic_usage) {
-	//TODO: Figure out how to do this in a nice way
+#ifndef _WIN32 // Doesn't work with vs2010 sp1
+	BOOST_CHECK(get<JSONNull>(JSONValue(parse(L"null"))) == nullptr);
+#else
 	JSONValue val(parse(L"null"));
-	
+	//TODO: Figure out how to do this in a nice way
 	unsigned int accumulated = 0;
 	unsigned int strings = 0;
 	unsigned int objects = 0;
@@ -106,6 +108,8 @@ BOOST_AUTO_TEST_CASE(null_basic_usage) {
 	get_stats(accumulated, strings, objects, arrays, bools, nulls, doubles, val);
 	BOOST_CHECK((nulls == 1) && (accumulated == 1));
 	
+#endif
+
 	// Make sure we don't accept anything used in other languages
 	BOOST_CHECK_THROW(parse(L"nil"), ParsingFailed);
 	BOOST_CHECK_THROW(parse(L"None"), ParsingFailed);
