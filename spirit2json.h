@@ -6,7 +6,7 @@
  * Copyright (c) 2011, Stefan Hacker <dd0t@users.sourceforge.net>
  *
  * All rights reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *     * Redistributions of source code must retain the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of the authors nor the
  *       names of its contributors may be used to endorse or promote products
  *       derived from this software without specific prior written permission.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
  * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
  * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
@@ -34,7 +34,7 @@
 
 /**
  * \mainpage Overview
- * 
+ *
  * spirit2json is a json parser/generator written in C++ using the Boost Spirit library (http://boost-spirit.com/).
  *
  * \section Usage
@@ -48,9 +48,16 @@
 #include <ostream>
 #include <vector>
 #include <map>
+#include <cstddef>
 
+#include <boost/version.hpp>
 #include <boost/variant.hpp>
 #include <boost/config.hpp>
+
+#if !defined(BOOST_VARIANT_NO_FULL_RECURSIVE_VARIANT_SUPPORT) \
+	&& BOOST_VERSION < 104700 // Work around incorrect recursive_variant_ definition in older boosts
+struct boost::recursive_variant_ {};
+#endif
 
 /**
  * \brief Contains everything related spirit2json JSON parser/generator.
@@ -58,36 +65,37 @@
 namespace spirit2json {
 
 /**
- * \brief Typedef to std::nullptr_t for compilers that support it. Stub class otherwise.
+ * \brief Typedef to std::nullptr_t for compilers that support it. Emulate otherwise.
  */
 #if defined(BOOST_NO_NULLPTR) // C++03 compat
 class JSONNull {
-	bool operator==(const JSONNull &other) {
-		return true;
-	}
+public:
+	template<class T>
+	operator T*() const { return 0; }
 
-	operator bool() {
-		return false;
-	}
+	template <class C, class T>
+	operator T C::*() const { return 0; }
 
-	const JSONNull nullptr;
+	bool operator==(const JSONNull&) const { return true; }
+private:
+	void operator &() const;
 };
 #else
 typedef std::nullptr_t JSONNull;
 #endif
 
 /**
- * \brief typeid() enum for all types that can be contained in a JSONValue.
- * \note Not to confuse with RTTI typeinfo related data. This is boost variant specific.
+ * \brief which() value enumeration enum for all types that can be contained in a JSONValue.
+ * \note Not to confuse with RTTI typeinfo related data. This is boost::variant specific.
  */
 enum JSONValueTypes
 {
-	JSON_STRING, //!< JSONString typeid
-	JSON_NUMBER, //!< JSONNumber typeid
-	JSON_BOOL,   //!< JSONBool typeid
-	JSON_NULL,   //!< JSONNull typeid
-	JSON_ARRAY,  //!< JSONArray typeid
-	JSON_OBJECT  //!< JSONObject typeid
+	JSON_STRING, //!< JSONValue(JSONString()).which() value
+	JSON_NUMBER, //!< JSONValue(JSONNumber(0)).which() value
+	JSON_BOOL,   //!< JSONValue(JSONBool(false)).which() value
+	JSON_NULL,   //!< JSONValue(JSONNull()).which() value
+	JSON_ARRAY,  //!< JSONValue(JSONArray()).which() value
+	JSON_OBJECT  //!< JSONValue(JSONObject()).which() value
 };
 
 //! Typedef to std::wstring

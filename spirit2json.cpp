@@ -6,7 +6,7 @@
  * Copyright (c) 2011, Stefan Hacker <dd0t@users.sourceforge.net>
  *
  * All rights reserved.
- * 
+ *
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are met:
  *     * Redistributions of source code must retain the above copyright
@@ -17,7 +17,7 @@
  *     * Neither the name of the authors nor the
  *       names of its contributors may be used to endorse or promote products
  *       derived from this software without specific prior written permission.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS" AND
  * ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED
  * WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE
@@ -151,7 +151,7 @@ public:
 
 	void operator()(JSONArray &arr) const {
 		out << L"[" << std::endl;
-		for (auto it = arr.begin(); it != arr.end(); ++it) {
+		for (JSONArray::iterator  it = arr.begin(); it != arr.end(); ++it) {
 			if (it != arr.begin())
 				out << L"," << std::endl;
 
@@ -164,7 +164,7 @@ public:
 
 	void operator()(JSONObject &obj) const {
 		out << L"{" << std::endl;
-		for (auto it = obj.begin(); it != obj.end(); ++it) {
+		for (JSONObject::iterator it = obj.begin(); it != obj.end(); ++it) {
 			if (it != obj.begin())
 				out << L',' << std::endl;
 
@@ -180,14 +180,17 @@ public:
 	}
 
 	void operator() (JSONString &str) const {
+		//TODO: This is obviously insufficient ;-) Add escape magic here.
 		out << L"\"" << str << L"\"";
 	}
 
-	template <typename T>
-	void operator() (T &t) const {
-		out << t;
+	void operator() (JSONNumber &num) const {
+		// Round to 16 digits. This means we can loose some precision
+		// when writing the number but we won't hit on nasty rounding
+		// problems with "normal" numbers either.
+		out.precision(std::numeric_limits<JSONNumber>::digits10 + 1);
+		out << num;
 	}
-
 };
 
 JSONString generate(JSONValue& val) {

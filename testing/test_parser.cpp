@@ -1,12 +1,17 @@
-#include "StdAfx.h"
-#define BOOST_TEST_MODULE spirit2json test
+#define BOOST_TEST_DYN_LINK
+
 #include <spirit2json.h>
-#include <boost/test/included/unit_test.hpp>
 #include <string>
+#include <boost/test/unit_test.hpp>
+#include <boost/variant.hpp>
 
 using namespace std;
 using namespace spirit2json;
+
 using boost::get;
+
+BOOST_AUTO_TEST_SUITE(test_parser)
+
 /*
 	Tests for Number
 */
@@ -93,23 +98,9 @@ BOOST_AUTO_TEST_CASE(boolean_basic_usage) {
 	Tests for null
 */
 BOOST_AUTO_TEST_CASE(null_basic_usage) {
-#ifndef _WIN32 // Doesn't work with vs2010 sp1
-	BOOST_CHECK(get<JSONNull>(JSONValue(parse(L"null"))) == nullptr);
-#else
 	JSONValue val(parse(L"null"));
-	//TODO: Figure out how to do this in a nice way
-	unsigned int accumulated = 0;
-	unsigned int strings = 0;
-	unsigned int objects = 0;
-	unsigned int arrays = 0;
-	unsigned int bools = 0;
-	unsigned int nulls = 0;
-	unsigned int doubles = 0;
-	get_stats(accumulated, strings, objects, arrays, bools, nulls, doubles, val);
-	BOOST_CHECK((nulls == 1) && (accumulated == 1));
+	BOOST_CHECK(val == JSONValue(JSONNull()));
 	
-#endif
-
 	// Make sure we don't accept anything used in other languages
 	BOOST_CHECK_THROW(parse(L"nil"), ParsingFailed);
 	BOOST_CHECK_THROW(parse(L"None"), ParsingFailed);
@@ -127,7 +118,7 @@ BOOST_AUTO_TEST_CASE(array_basic_usage) {
 	BOOST_CHECK(JSONValue(arr) == parse(L"[]"));
 
 	arr.push_back(0.5);
-	arr.push_back(nullptr);
+	arr.push_back(JSONNull());
 	arr.push_back(wstring(L"testing"));
 	arr.push_back(false);
 
@@ -143,23 +134,23 @@ BOOST_AUTO_TEST_CASE(object_basic_usage) {
 
 	{
 		JSONObject o;
-		o.insert(JSONObject::value_type(L"NULL", nullptr));
+		o.insert(JSONObjectPair(L"NULL", JSONNull()));
 		BOOST_CHECK(JSONValue(o) == parse(L"{\"NULL\":null}"));
 	}
 
 	{
 		JSONObject o;
-		o.insert(JSONObject::value_type(L"other", JSONArray()));
+		o.insert(JSONObjectPair(L"other", JSONArray()));
 		BOOST_CHECK(JSONValue(o) == parse(L"{\"other\":[]}"));
 	}
 
-	obj.insert(JSONObject::value_type(L"test", 0.5));
+	obj.insert(JSONObjectPair(L"test", 0.5));
 	BOOST_CHECK(JSONValue(obj) == parse(L"{\"test\":0.5}"));
 
-	obj.insert(JSONObject::value_type(L"other", JSONArray()));
+	obj.insert(JSONObjectPair(L"other", JSONArray()));
 	BOOST_CHECK(JSONValue(obj) == parse(L"{\"test\":0.5,\"other\":[]}"));
 
-	obj.insert(JSONObject::value_type(L"NULL", nullptr));
+	obj.insert(JSONObjectPair(L"NULL", JSONNull()));
 	BOOST_CHECK(JSONValue(obj) == parse(L" { \"test\" :0.5,\n\t\t\"other\"  \t\n:[],  \"NULL\":null}"));
 
 	BOOST_CHECK_THROW(parse(L"{:}"), ParsingFailed);
@@ -174,3 +165,27 @@ BOOST_AUTO_TEST_CASE(misc) {
 	BOOST_CHECK_THROW(parse(L"]"), ParsingFailed);
 	BOOST_CHECK_THROW(parse(L","), ParsingFailed);
 }
+
+/*
+	Tests whether the type enumeration works as expected
+*/
+BOOST_AUTO_TEST_CASE(type_enum) {
+	BOOST_CHECK_EQUAL(JSONValue(JSONString()).which(), JSON_STRING);
+	BOOST_CHECK_EQUAL(JSONValue(JSONNumber(0)).which(), JSON_NUMBER);
+	BOOST_CHECK_EQUAL(JSONValue(JSONBool(false)).which(), JSON_BOOL);
+	BOOST_CHECK_EQUAL(JSONValue(JSONNull()).which(), JSON_NULL);
+	BOOST_CHECK_EQUAL(JSONValue(JSONArray()).which(), JSON_ARRAY);
+	BOOST_CHECK_EQUAL(JSONValue(JSONObject()).which(), JSON_OBJECT);
+}
+
+/*
+	Test whether our JSONNull type works as expected
+*/
+BOOST_AUTO_TEST_CASE(json_null) {
+	char *ch = JSONNull();
+	BOOST_CHECK(ch == 0);
+	BOOST_CHECK(ch == JSONNull());
+	BOOST_CHECK(JSONNull() == JSONNull());
+}
+
+BOOST_AUTO_TEST_SUITE_END()
